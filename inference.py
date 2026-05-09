@@ -15,6 +15,7 @@ import sys
 
 import lpips
 import skimage.io
+from PIL import Image
 from training.constants import *
 from training.sample import resize, sampling_loop
 import training.utils as utils
@@ -26,7 +27,7 @@ device = torch.device('cuda')
 f0 = '00068-lol-fullres-bos-ddpmpp-edm-linear--res32x32-noiseTrue-paintnormFalse-scalenormTrue-lpipsTrue-gpus1-batch148-fp32/network-snapshot-001394.pkl'
 
 fpaths = {'lowlight': '../data/lowLightDataset256',
-          'lol': '../data/LOL/eval15_256',
+          'lol': r'D:\HK2\KPDL\content\data\LOL_30\eval15',
           }
 
 subfolder_dict = {'lowlight': {'gt': 'gt/test', 'input': 'input/test/1'},
@@ -36,6 +37,17 @@ runs_dir = 'runs'
 
 def t2n(img):
     return (img[0].permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8)
+
+
+def read_rgb_256(path):
+    img = Image.open(path).convert('RGB')
+    w, h = img.size
+    side = min(w, h)
+    left = (w - side) // 2
+    top = (h - side) // 2
+    img = img.crop((left, top, left + side, top + side))
+    img = img.resize((256, 256), Image.Resampling.LANCZOS)
+    return np.asarray(img)
 
 
 def make_batches(fnames, batch_size):
@@ -181,8 +193,8 @@ def main(args):
 
         for j in range(len(batch_fname)):
             fname = batch_fname[j]
-            input = skimage.io.imread(f'{input_path}/{fname}')
-            gt    = skimage.io.imread(f'{gt_path}/{fname}')
+            input = read_rgb_256(f'{input_path}/{fname}')
+            gt    = read_rgb_256(f'{gt_path}/{fname}')
 
             input_he = (utils.srgb_to_linear_np(input / 255.0) * 255.0).astype(np.uint8)
             input_he = utils.equalize_histogram(input_he)
